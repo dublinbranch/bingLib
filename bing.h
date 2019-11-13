@@ -31,6 +31,7 @@ using sqlResult = QList<sqlRow>;
 
 class QDomNode;
 class CURLpp;
+class DB;
 class Bing {
       public:
 	bool    insertCampaign(const sqlRow& data);
@@ -57,6 +58,7 @@ class Bing {
 	void getAdGroupExpenditure(const QDateTime &day);
 	void bulkDownloader(const QByteArray &remoteId);
 
+	DB* db = nullptr;
       protected:
 	CURLpp* curlpp = nullptr;
 

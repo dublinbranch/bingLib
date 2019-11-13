@@ -11,36 +11,34 @@
 #include <minCurl/mincurl.h>
 #include <unistd.h>
 
-extern DB db;
+//QByteArray fetchRemoteCampaignId(quint64 campaign_id, int dsp_id) {
+//	static QString                   query = "select remote_id from DSPRemote.campaign_has_remote where campaign_id = %1 and dsp_id = %2";
+//	static QMap<QString, QByteArray> cache;
+//	static std::mutex                mutex;
+//	static const QByteArray          def = "0";
+//	QByteArray                       val;
 
-QByteArray fetchRemoteCampaignId(quint64 campaign_id, int dsp_id) {
-	static QString                   query = "select remote_id from DSPRemote.campaign_has_remote where campaign_id = %1 and dsp_id = %2";
-	static QMap<QString, QByteArray> cache;
-	static std::mutex                mutex;
-	static const QByteArray          def = "0";
-	QByteArray                       val;
+//	QString sql = query.arg(campaign_id).arg(dsp_id);
+//	mutex.lock();
+//	auto iter = cache.constFind(sql);
+//	if (iter != cache.cend()) {
+//		val = iter.value();
+//		mutex.unlock();
+//		return val;
+//	}
+//	mutex.unlock();
 
-	QString sql = query.arg(campaign_id).arg(dsp_id);
-	mutex.lock();
-	auto iter = cache.constFind(sql);
-	if (iter != cache.cend()) {
-		val = iter.value();
-		mutex.unlock();
-		return val;
-	}
-	mutex.unlock();
-
-	auto lst = db.query(sql);
-	if (lst.size() > 0) {
-		val = lst.at(0).value("remote_id");
-		mutex.lock();
-		cache.insert(sql, val);
-		mutex.unlock();
-	} else {
-		val = def;
-	}
-	return val;
-}
+//	auto lst = db.query(sql);
+//	if (lst.size() > 0) {
+//		val = lst.at(0).value("remote_id");
+//		mutex.lock();
+//		cache.insert(sql, val);
+//		mutex.unlock();
+//	} else {
+//		val = def;
+//	}
+//	return val;
+//}
 
 QMap<QString, QString> Bing::nationCodes   = Bing::initNationCodes();
 QMap<QString, QString> Bing::languageCodes = Bing::initLanguageCodes();
@@ -320,7 +318,7 @@ quint64 Bing::insertSingleKeyword(const sqlRow& data) {
 	               .arg(QString(res))
 	               .arg(QString(data.value("id")));
 
-	db.query(sql);
+	db->query(sql);
 	return 0;
 }
 
@@ -398,7 +396,7 @@ void Bing::insertMultipleKeyword(const sqlResult& data) {
 	//one group at a time.
 
 	//This is just to avoid reinserting the same stuff over and over again (which will trigger an error guaranteed)
-	SQLBuffering buffer(&db);
+	SQLBuffering buffer(db);
 	for (int i = 0; i < res.size(); i++) {
 		QString remoteId = res.at(i);
 		QString localId  = data.at(i).value("id");
@@ -617,32 +615,6 @@ QMap<QString, QString> Bing::initLanguageCodes() {
 
 double return1() {
 	return 1;
-}
-
-double USD_EUR() {
-	static const QString query    = "SELECT rate, date from ExternalPlatforms.exchange_rates WHERE date > FROM_UNIXTIME(UNIX_TIMESTAMP() - 3600 * 24 * 7) AND convert_to = 'USD' ORDER BY DATE DESC LIMIT 1 ";
-	static double        result   = 0;
-	static qint64        lastSync = 0;
-	auto                 time     = QDateTime::currentSecsSinceEpoch();
-
-	static std::mutex            mu;
-	std::unique_lock<std::mutex> lock(mu);
-
-	if (result > 0 && lastSync > (time - 3600)) {
-		//superLog("debug for USD rate: ", Stream::Generic, 0, ALL) << result;
-		return result;
-	}
-
-	auto res = db.query(query);
-	if (res.length() > 0) {
-		result   = res.at(0).value("rate").toDouble();
-		lastSync = time;
-		qDebug() << "Current USD_EUR rate is " << result;
-		return result;
-	} else {
-		qCritical() << "Impossible to swap a recent exchange_rates for USD, query was " << query;
-		exit(0);
-	}
 }
 
 QString Bing::getGroupInfo(const QByteArray& remote_campaign_id) {
