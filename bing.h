@@ -1,5 +1,4 @@
-#ifndef BING_H
-#define BING_H
+#pragma once
 
 #include <QHash>
 
@@ -20,10 +19,8 @@ struct BingSpecialization {
 	/**
 	 * @brief developerToken from https://developers.ads.microsoft.com/Account
 	 */
-	QByteArray  developerToken;
-	bool        useLanguage = true;
-	std::string endpoint;
-	std::string token_endpoint;
+	QByteArray developerToken;
+	bool       sandBox = false;
 };
 
 using sqlRow    = QMap<QByteArray, QByteArray>;
@@ -32,7 +29,7 @@ using sqlResult = QList<sqlRow>;
 class QDomNode;
 class CURLpp;
 class DB;
-class Bing {
+class BingLib {
       public:
 	bool    insertCampaign(const sqlRow& data);
 	bool    insertAds(const QByteArray& payload);
@@ -46,19 +43,20 @@ class Bing {
 	QString createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toReplace);
 	QString createParamFile(QString skeletonUrl, QMap<QString, QString> toReplace);
 	bool    flushUpdateGroup();
-	Bing() = default;
-	Bing(BingSpecialization* spec);
-	~Bing() = default;
+	BingLib() = default;
+	BingLib(BingSpecialization* spec);
+	~BingLib() = default;
 	//static std::shared_ptr<Bing>          getInstance(int id);
 	static QHash<int, BingSpecialization> configMap;
 	const BingSpecialization*             spec;
 	QByteArray                            getHeader(int type = 0);
 	QString                               getGroupInfo(const QByteArray& remote_campaign_id);
 
-	void getAdGroupExpenditure(const QDateTime &day);
-	void bulkDownloader(const QByteArray &remoteId);
+	QByteArray getAdGroupExpenditure(const QDateTime& day);
+	QByteArray bulkDownloader(const QByteArray& remoteId);
 
 	DB* db = nullptr;
+
       protected:
 	CURLpp* curlpp = nullptr;
 
@@ -118,4 +116,3 @@ class Bing {
 	QHash<quint64, QByteArrayList*> groupToUpdate;
 	//ChangeLog change;
 };
-#endif // BING_H

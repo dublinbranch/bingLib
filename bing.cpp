@@ -1,4 +1,5 @@
 #include "bing.h"
+#include "QStacker/qstacker.h"
 #include "define/define.h"
 #include "fileFunction/filefunction.h"
 #include "minMysql/min_mysql.h"
@@ -40,10 +41,10 @@
 //	return val;
 //}
 
-QMap<QString, QString> Bing::nationCodes   = Bing::initNationCodes();
-QMap<QString, QString> Bing::languageCodes = Bing::initLanguageCodes();
+QMap<QString, QString> BingLib::nationCodes   = BingLib::initNationCodes();
+QMap<QString, QString> BingLib::languageCodes = BingLib::initLanguageCodes();
 
-Bing::Bing(BingSpecialization* spec) {
+BingLib::BingLib(BingSpecialization* spec) {
 	auto builder = CURLpp::Builder()
 	                   .set_timeout(10000)
 	                   .set_connect_timeout(2000);
@@ -57,8 +58,13 @@ Bing::Bing(BingSpecialization* spec) {
  * @param payload
  * @return
  */
-bool Bing::insertAds(const QByteArray& payload) {
-	std::string url = spec->endpoint;
+bool BingLib::insertAds(const QByteArray& payload) {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	}
 
 	auto marx = curlpp->getMarx();
 	curl_easy_setopt(marx, CURLOPT_POST, 1);
@@ -85,7 +91,19 @@ bool Bing::insertAds(const QByteArray& payload) {
  * @param toReplace		pairs of pattern->value to replace. the patterns are usually inside double curly brackets
  * @return				the name of the file with all the pattern replaced if writeToFile is true, the content of the file otherwise
  */
-QString Bing::createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toReplace) {
+QString BingLib::createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toReplace) {
+	QString fileContent = fileGetContents(skeletonUrl, false);
+	if (fileContent.size() < 10) {
+		throw QSL("the template file is impossible small!") + skeletonUrl + QStacker();
+	}
+	for (auto e : toReplace.toStdMap()) { //orrible but nice
+		fileContent.replace(e.first, e.second);
+	}
+	//fileContent.replace('\n', "");
+	return fileContent;
+}
+
+QString BingLib::createParamFile(QString skeletonUrl, QMap<QString, QString> toReplace) {
 	QString fileContent = fileGetContents(skeletonUrl, false);
 	for (auto e : toReplace.toStdMap()) { //orrible but nice
 		fileContent.replace(e.first, e.second);
@@ -94,23 +112,21 @@ QString Bing::createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toR
 	return fileContent;
 }
 
-QString Bing::createParamFile(QString skeletonUrl, QMap<QString, QString> toReplace) {
-	QString fileContent = fileGetContents(skeletonUrl, false);
-	for (auto e : toReplace.toStdMap()) { //orrible but nice
-		fileContent.replace(e.first, e.second);
+QString BingLib::getCampaignsInfo() {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
 	}
-	//fileContent.replace('\n', "");
-	return fileContent;
-}
 
-QString Bing::getCampaignsInfo() {
 	QMap<QString, QByteArray> to_substitute{
 	    {"{{header_auth}}", getHeader()},
 	    {"{{account_id}}", spec->accountId}};
 	QString params = createParamFile("BingReplicationAPI/samples_working/GetCampaigns_tmpl.xml", to_substitute);
 
 	CURLpp curlHandler = CURLpp::Builder()
-	                         .set_url(spec->endpoint)
+	                         .set_url(url)
 	                         .set_timeout(10000)
 	                         .set_connect_timeout(2000)
 	                         .add_http_header("Content-Type: text/xml;charset=UTF-8")
@@ -150,8 +166,13 @@ QString Bing::getCampaignsInfo() {
 	return res;
 }
 
-QByteArray Bing::getAccessToken() {
-	std::string url = spec->token_endpoint;
+QByteArray BingLib::getAccessToken() {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://login.live-int.com/oauth20_token.srf";
+	} else {
+		url = "https://login.live.com/oauth20_token.srf";
+	}
 
 	if (token_expires > QDateTime::currentSecsSinceEpoch()) {
 		return token;
@@ -185,7 +206,7 @@ QByteArray Bing::getAccessToken() {
 	return token;
 }
 
-QByteArray Bing::getHeader(int type) {
+QByteArray BingLib::getHeader(int type) {
 	QByteArray header;
 	switch (type) {
 	case 0:
@@ -218,7 +239,7 @@ QByteArray Bing::getHeader(int type) {
 	return header;
 }
 
-std::string Bing::postFieldsForInsertGroup(const sqlRow& data) {
+std::string BingLib::postFieldsForInsertGroup(const sqlRow& data) {
 	//with current logic a banner can have ONLY one group bound, so if we have duplication with that, is a BAD error...
 	//quint64 status = data.value("statusng").toULong();
 	bool enabled = true; //(status & 1) == 1 && (status & CAMPAIGN_STATUSNG_PAUSED_ALL) == 0;
@@ -232,7 +253,7 @@ std::string Bing::postFieldsForInsertGroup(const sqlRow& data) {
 	return createParamFile("BingReplicationAPI/samples_working/AddAdGroups_tmpl.xml", to_substitute).toStdString();
 }
 
-std::string Bing::postFieldsForInsertKeyword(const sqlRow& data) {
+std::string BingLib::postFieldsForInsertKeyword(const sqlRow& data) {
 	QString keyword_matchtype = data.value("MatchType"); //Qbytearrayref is missing some function -.-
 	keyword_matchtype[0]      = keyword_matchtype[0].toUpper();
 
@@ -246,7 +267,13 @@ std::string Bing::postFieldsForInsertKeyword(const sqlRow& data) {
 	return createParamFile("BingReplicationAPI/samples_working/AddKeywords_tmpl.xml", to_substitute).toStdString();
 }
 
-QString Bing::insertGroup(const sqlRow& data) {
+QString BingLib::insertGroup(const sqlRow& data) {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	}
 	bool    ok;
 	quint64 remote_campaign_id = data.value("campaignRemoteId").toULongLong(&ok);
 	if (!ok || remote_campaign_id == 0) {
@@ -271,7 +298,7 @@ QString Bing::insertGroup(const sqlRow& data) {
 	curlpp->addHeader("Content-Type: text/xml;charset=UTF-8");
 	curlpp->addHeader("SOAPAction: AddAdGroups");
 	curlpp->setPost(params);
-	curlpp->setUrl(spec->endpoint);
+	curlpp->setUrl(url);
 
 	auto response = QString::fromStdString(curlpp->perform());
 
@@ -299,10 +326,17 @@ QString Bing::insertGroup(const sqlRow& data) {
 	return QString();
 }
 
-quint64 Bing::insertSingleKeyword(const sqlRow& data) {
+quint64 BingLib::insertSingleKeyword(const sqlRow& data) {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	}
+
 	std::string params = postFieldsForInsertKeyword(data);
 
-	curlpp->setUrl(spec->endpoint);
+	curlpp->setUrl(url);
 	curlpp->addHeader("Content-Type: text/xml;charset=UTF-8");
 	curlpp->addHeader("SOAPAction: AddKeywords");
 	curlpp->setPost(params);
@@ -322,7 +356,14 @@ quint64 Bing::insertSingleKeyword(const sqlRow& data) {
 	return 0;
 }
 
-void Bing::insertMultipleKeyword(const sqlResult& data) {
+void BingLib::insertMultipleKeyword(const sqlResult& data) {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	}
+
 	if (data.isEmpty()) {
 		return;
 	}
@@ -376,7 +417,7 @@ void Bing::insertMultipleKeyword(const sqlResult& data) {
 	env.replace("{{KEYWORD}}", keys);
 
 	curlpp->resetHeader();
-	curlpp->setUrl(spec->endpoint);
+	curlpp->setUrl(url);
 	curlpp->addHeader("Content-Type: text/xml;charset=UTF-8");
 	curlpp->addHeader("SOAPAction: AddKeywords");
 	auto cry = curlpp->getMarx();
@@ -408,7 +449,7 @@ void Bing::insertMultipleKeyword(const sqlResult& data) {
 	return;
 }
 
-QString Bing::convertDeviceMask(quint64 remote_campaign_id, const quint64& deviceMask) {
+QString BingLib::convertDeviceMask(quint64 remote_campaign_id, const quint64& deviceMask) {
 	static QString singleCriterion = "<CampaignCriterion i:type=\"BiddableCampaignCriterion\" xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\">"
 	                                 "<CampaignId>%1</CampaignId>"
 	                                 "<Criterion i:nil=\"false\" i:type=\"DeviceCriterion\">"
@@ -451,7 +492,7 @@ QString Bing::convertDeviceMask(quint64 remote_campaign_id, const quint64& devic
 	           .arg(amount_tablet);
 }
 
-QString Bing::getNationCodeList(quint64 remote_campaign_id, const QStringList& nations) {
+QString BingLib::getNationCodeList(quint64 remote_campaign_id, const QStringList& nations) {
 	static QString singleCriterion = "<CampaignCriterion i:type=\"BiddableCampaignCriterion\" xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\">"
 	                                 "<CampaignId>%1</CampaignId>"
 	                                 "<Criterion i:nil=\"false\" i:type=\"LocationCriterion\">"
@@ -474,7 +515,7 @@ QString Bing::getNationCodeList(quint64 remote_campaign_id, const QStringList& n
 	return criterionList;
 }
 
-QString Bing::getTrackingInfos(const QMap<QByteArray, QByteArray>& data) {
+QString BingLib::getTrackingInfos(const QMap<QByteArray, QByteArray>& data) {
 	static const QString trackingUrl =
 	    "<TrackingUrlTemplate i:nil=\"false\">%1</TrackingUrlTemplate>  ";
 	static const QString customParameters =
@@ -531,7 +572,7 @@ QString Bing::getTrackingInfos(const QMap<QByteArray, QByteArray>& data) {
  * @param responseType the json tag that we are supposed to find PartialErrors into (after root->s:Body)
  * @return false if there is an error, true otherwise
  */
-bool Bing::errorCheck(const QString& response) {
+bool BingLib::errorCheck(const QString& response) {
 	bool a = response.contains("Authentication failed");
 	bool b = response.contains("PartialErrors");
 	bool c = response.contains("s:Fault");
@@ -582,13 +623,13 @@ Json::Value Bing::responseToJSON(std::string resp) {
 	return jsonResponse;
 }
 */
-QMap<QString, QString> Bing::initNationCodes() {
+QMap<QString, QString> BingLib::initNationCodes() {
 	static QMap<QString, QString> map{
 	    {"AF", "221"}, {"AL", "1"}, {"AQ", "2"}, {"DZ", "3"}, {"AS", "4"}, {"AD", "5"}, {"AO", "6"}, {"AG", "7"}, {"AZ", "203"}, {"AR", "8"}, {"AU", "9"}, {"AT", "10"}, {"BS", "11"}, {"BH", "204"}, {"BD", "12"}, {"AM", "205"}, {"BB", "13"}, {"BE", "14"}, {"BM", "15"}, {"BT", "16"}, {"BO", "17"}, {"BA", "198"}, {"BW", "18"}, {"BR", "20"}, {"BZ", "21"}, {"SB", "23"}, {"VG", "24"}, {"BN", "25"}, {"BG", "26"}, {"MM", "27"}, {"BI", "28"}, {"BY", "29"}, {"KH", "30"}, {"CM", "31"}, {"CA", "32"}, {"CV", "33"}, {"KY", "34"}, {"CF", "35"}, {"LK", "36"}, {"TD", "37"}, {"CL", "38"}, {"CN", "39"}, {"TW", "40"}, {"CX", "41"}, {"CC", "42"}, {"CO", "43"}, {"KM", "226"}, {"YT", "44"}, {"CG", "45"}, {"CD", "46"}, {"CK", "47"}, {"CR", "48"}, {"HR", "49"}, {"CY", "206"}, {"CZ", "51"}, {"BJ", "52"}, {"DK", "53"}, {"DM", "54"}, {"DO", "55"}, {"EC", "56"}, {"SV", "57"}, {"GQ", "58"}, {"ET", "59"}, {"ER", "60"}, {"EE", "61"}, {"FO", "62"}, {"FK", "63"}, {"FJ", "199"}, {"FI", "65"}, {"FR", "66"}, {"GF", "67"}, {"PF", "68"}, {"DJ", "69"}, {"GA", "70"}, {"GE", "208"}, {"GM", "71"}, {"PS", "220"}, {"DE", "72"}, {"GH", "73"}, {"GI", "74"}, {"KI", "75"}, {"GR", "76"}, {"GL", "77"}, {"GD", "78"}, {"GP", "79"}, {"GU", "80"}, {"GT", "81"}, {"GN", "82"}, {"GY", "83"}, {"HT", "84"}, {"VA", "86"}, {"HN", "87"}, {"HK", "200"}, {"HU", "88"}, {"IS", "89"}, {"IN", "90"}, {"ID", "91"}, {"IQ", "228"}, {"IE", "92"}, {"IL", "210"}, {"IT", "93"}, {"CI", "94"}, {"JM", "95"}, {"JP", "96"}, {"KZ", "97"}, {"JO", "211"}, {"KE", "98"}, {"KR", "100"}, {"KW", "212"}, {"KG", "101"}, {"LA", "102"}, {"LB", "213"}, {"LS", "103"}, {"LV", "104"}, {"LR", "105"}, {"LY", "106"}, {"LI", "107"}, {"LT", "108"}, {"LU", "109"}, {"MO", "201"}, {"MG", "110"}, {"MW", "111"}, {"MY", "112"}, {"MV", "113"}, {"ML", "114"}, {"MT", "115"}, {"MQ", "116"}, {"MR", "117"}, {"MU", "118"}, {"MX", "119"}, {"MC", "120"}, {"MN", "121"}, {"MD", "122"}, {"MS", "123"}, {"MA", "124"}, {"MZ", "125"}, {"OM", "214"}, {"NA", "126"}, {"NR", "127"}, {"NP", "128"}, {"NL", "129"}, {"BQ", "130"}, {"AW", "131"}, {"NC", "132"}, {"VU", "133"}, {"NZ", "134"}, {"NI", "135"}, {"NE", "136"}, {"NG", "137"}, {"NU", "223"}, {"NF", "138"}, {"NO", "139"}, {"MP", "140"}, {"FM", "141"}, {"MH", "142"}, {"PW", "143"}, {"PK", "144"}, {"PA", "145"}, {"PG", "146"}, {"PY", "147"}, {"PE", "148"}, {"PH", "149"}, {"PN", "150"}, {"PL", "151"}, {"PT", "152"}, {"GW", "153"}, {"TL", "222"}, {"PR", "154"}, {"QA", "215"}, {"RE", "155"}, {"RO", "224"}, {"RU", "156"}, {"RW", "157"}, {"SH", "229"}, {"KN", "230"}, {"AI", "158"}, {"LC", "231"}, {"PM", "232"}, {"VC", "233"}, {"SM", "159"}, {"ST", "160"}, {"SA", "216"}, {"SN", "161"}, {"SC", "162"}, {"SL", "163"}, {"SG", "164"}, {"SK", "165"}, {"VN", "166"}, {"SI", "167"}, {"SO", "225"}, {"ZA", "168"}, {"ZW", "169"}, {"ES", "170"}, {"SR", "172"}, {"SZ", "173"}, {"SE", "174"}, {"CH", "175"}, {"TJ", "176"}, {"TH", "177"}, {"TG", "178"}, {"TK", "179"}, {"TO", "180"}, {"TT", "181"}, {"AE", "218"}, {"TN", "227"}, {"TR", "182"}, {"TM", "183"}, {"TC", "184"}, {"TV", "234"}, {"UG", "185"}, {"UA", "235"}, {"MK", "186"}, {"EG", "187"}, {"GB", "188"}, {"TZ", "189"}, {"US", "190"}, {"VI", "237"}, {"BF", "191"}, {"UY", "192"}, {"UZ", "193"}, {"VE", "202"}, {"WF", "194"}, {"WS", "195"}, {"YE", "219"}, {"ZM", "196"}};
 	return map;
 }
 
-QMap<QString, QString> Bing::initLanguageCodes() {
+QMap<QString, QString> BingLib::initLanguageCodes() {
 	static QMap<QString, QString> map{
 	    {"ar", "Arabic"},
 	    {"da", "Danish"},
@@ -617,7 +658,14 @@ double return1() {
 	return 1;
 }
 
-QString Bing::getGroupInfo(const QByteArray& remote_campaign_id) {
+QString BingLib::getGroupInfo(const QByteArray& remote_campaign_id) {
+	std::string url;
+	if (spec->sandBox) {
+		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	} else {
+		url = "https://campaign.api.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
+	}
+
 	//	QString params = getFile("BingReplicationAPI/samples_working/GetAdGroupsByCampaignId_tmpl.xml");
 	QMap<QString, QByteArray> to_substitute{
 	    {"{{header_auth}}", getHeader()},
@@ -625,7 +673,7 @@ QString Bing::getGroupInfo(const QByteArray& remote_campaign_id) {
 	QString params = createParamFile("BingReplicationAPI/samples_working/GetAdGroupsByCampaignId_tmpl.xml", to_substitute);
 
 	CURLpp curlHandler = CURLpp::Builder()
-	                         .set_url(spec->endpoint)
+	                         .set_url(url)
 	                         .set_timeout(10000)
 	                         .set_connect_timeout(2000)
 	                         .add_http_header("Content-Type: text/xml;charset=UTF-8")
@@ -640,7 +688,7 @@ QString Bing::getGroupInfo(const QByteArray& remote_campaign_id) {
 	return response;
 }
 
-void Bing::getAdGroupExpenditure(const QDateTime& day) {
+QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13" xmlns:ns2="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
   <SOAP-ENV:Header>
@@ -709,28 +757,12 @@ void Bing::getAdGroupExpenditure(const QDateTime& day) {
 </SOAP-ENV:Envelope>
 )EOD";
 
-	//	<Time i:nil="false">
-//		  <CustomDateRangeEnd i:nil="false">
-//			<Day>ValueHere</Day>
-//			<Month>ValueHere</Month>
-//			<Year>ValueHere</Year>
-//		  </CustomDateRangeEnd>
-//		  <CustomDateRangeStart i:nil="false">
-//			<Day>ValueHere</Day>
-//			<Month>ValueHere</Month>
-//			<Year>ValueHere</Year>
-//		  </CustomDateRangeStart>
-	//	  <PredefinedTime i:nil="false">ValueHere</PredefinedTime>
-	//	  <ReportTimeZone i:nil="false">ValueHere</ReportTimeZone>
-	//	</Time>
-
 	skel.replace("{{header_auth}}", getHeader(1));
 	skel.replace("{{account_id}}", "139170914");
-	skel.replace("{{day}}",QByteArray::number(day.date().day()));
+	skel.replace("{{day}}", QByteArray::number(day.date().day()));
 	skel.replace("{{month}}", QByteArray::number(day.date().month()));
 	skel.replace("{{year}}", QByteArray::number(day.date().year()));
 	skel.replace("{{name}}", QSL("Report %1").arg(day.toString(mysqlDateFormat)).toUtf8());
-
 
 	CURLpp curlHandler = CURLpp::Builder()
 	                         .set_url("https://reporting.api.bingads.microsoft.com/Api/Advertiser/Reporting/V13/ReportingService.svc")
@@ -739,21 +771,21 @@ void Bing::getAdGroupExpenditure(const QDateTime& day) {
 	                         .add_http_header("Content-Type: text/xml;charset=UTF-8")
 	                         .add_http_header("SOAPAction: SubmitGenerateReport")
 	                         .set_post_fields(skel.toStdString())
-	                         .set_verbose(true)
+	                         .set_verbose(false)
 	                         .build();
 
 	auto response = QString::fromStdString(curlHandler.perform());
-	filePutContents("res1", response);
+
 	XPath xml(response);
 	auto  res = xml.getLeaf("//*[name()='ReportRequestId']");
-	if(res.isEmpty()){
-		qCritical() << "errore nel richiedere report";
-		return ;
+	if (res.isEmpty()) {
+		qCritical().noquote() << "errore nel richiedere report" << QStacker();
+		return QByteArray();
 	}
-	bulkDownloader(res);
+	return bulkDownloader(res);
 }
 
-void Bing::bulkDownloader(const QByteArray& remoteId) {
+QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13">
   <SOAP-ENV:Header>
@@ -793,9 +825,18 @@ void Bing::bulkDownloader(const QByteArray& remoteId) {
 	}
 
 	downloadUrl.replace("&amp;", "&");
-	filePutContents(downloadUrl, "res2");
+
 	auto content = urlGetContent(downloadUrl);
-	filePutContents(content, "downloadedFile.zip");
+
+	cleanFolder("bingReport");
+
+	filePutContents(content, "bingReport/downloadedFile.zip");
+
+	auto files = unzippaFile("bingReport");
+	if(files.isEmpty()){
+		throw QSL("bing report is empty!");
+	}
+	return fileGetContents(files.at(0));
 }
 
 /*
