@@ -758,7 +758,7 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 )EOD";
 
 	skel.replace("{{header_auth}}", getHeader(1));
-	skel.replace("{{account_id}}", "139170914");
+	skel.replace("{{account_id}}", spec->accountId);
 	skel.replace("{{day}}", QByteArray::number(day.date().day()));
 	skel.replace("{{month}}", QByteArray::number(day.date().month()));
 	skel.replace("{{year}}", QByteArray::number(day.date().year()));
