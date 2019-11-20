@@ -112,7 +112,7 @@ QString BingLib::createParamFile(QString skeletonUrl, QMap<QString, QString> toR
 	return fileContent;
 }
 
-QString BingLib::getCampaignsInfo() {
+QByteArray BingLib::getCampaignsInfo() {
 	std::string url;
 	if (spec->sandBox) {
 		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
@@ -135,35 +135,15 @@ QString BingLib::getCampaignsInfo() {
 	                         .set_verbose(0)
 	                         .build();
 
-	QString response = QString::fromStdString(curlHandler.perform());
-
+	QByteArray response = curlHandler.perform().c_str();
 	QString lastError = QString::fromStdString(curlHandler.getLastError());
 
 	if (!errorCheck(response)) {
-		return lastError;
+		qCritical() << lastError;
+		return QByteArray();
 	}
 
-	QString res = "<html> <body>";
-	//	auto singleCampInfos = [](const Json::Value &val) -> QString{
-	//		QString res = "";
-	//		res.append(QString("<hr><a href = '?maru=youShallN0tP@ss&campaign_id=%1'><h3>campaign name: %2</h3></a>").arg(QString::fromStdString(val["Id"].asString())).arg(val["Name"].asString().c_str()));
-	//		res.append("id: " + QString::fromStdString(val["Id"].asString()));
-	//		res.append("<br>status: " + QString::fromStdString(val["Status"].asString()));
-	//		return res;
-	//	};
-
-	//	auto data = json["s:Body"]["GetCampaignsByAccountIdResponse"]["Campaigns"];
-	//	if(getAllCampaigns) {
-	//		for(Json::ValueIterator singleCampaign = data.begin(); singleCampaign != data.end(); ++singleCampaign) {
-	//			res.append(singleCampInfos(*singleCampaign));
-	//		}
-	//	} else {
-	//		res.append(QString("<a href = '?maru=youShallN0tP@ss'><-- Back</a>"));
-	//		res.append(singleCampInfos(data["Campaign"]));
-	//		res.append(getGroupInfo(remote_campaign_id, remote_group_id));
-	//	}
-
-	return res;
+	return response;
 }
 
 QByteArray BingLib::getAccessToken() {
@@ -573,6 +553,10 @@ QString BingLib::getTrackingInfos(const QMap<QByteArray, QByteArray>& data) {
  * @return false if there is an error, true otherwise
  */
 bool BingLib::errorCheck(const QString& response) {
+	return errorCheck(response.toUtf8());
+}
+
+bool BingLib::errorCheck(const QByteArray &response) {
 	bool a = response.contains("Authentication failed");
 	bool b = response.contains("PartialErrors");
 	bool c = response.contains("s:Fault");
@@ -589,6 +573,7 @@ bool BingLib::errorCheck(const QString& response) {
 
 	if (b) {
 		//Check if there are actual element inside, sometimes is sent an empty block ...
+		//TODO this is very expensive, we should return this xml / use somehow!
 		XPath xml(response);
 		auto  res = xml.getLeafs("//*[name()='PartialErrors']");
 		if (!res.isEmpty() && res.at(0).length() > 2) {
@@ -728,6 +713,7 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 				  <ns1:KeywordPerformanceReportColumn>LandingPageExperience</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Network</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>AdGroupName</ns1:KeywordPerformanceReportColumn>
+				  <ns1:KeywordPerformanceReportColumn>CurrentMaxCpc</ns1:KeywordPerformanceReportColumn>
 			  </ns1:Columns>
 			  <ns1:Filter xsi:nil="true" />
 			  <ns1:Scope>
@@ -737,7 +723,6 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 				  <ns1:AdGroups xsi:nil="true" />
 				  <ns1:Campaigns xsi:nil="true" />
 			  </ns1:Scope>
-			  <ns1:Sort xsi:nil="true" />
 			  <ns1:Time>
 				  <ns1:CustomDateRangeEnd>
 					<ns1:Day>{{day}}</ns1:Day>

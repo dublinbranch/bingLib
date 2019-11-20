@@ -37,7 +37,7 @@ class BingLib {
 	quint64 insertSingleKeyword(const sqlRow& data);
 	void    insertMultipleKeyword(const sqlResult& data);
 
-	QString getCampaignsInfo();
+	QByteArray getCampaignsInfo();
 	QString getLocations();
 
 	QString createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toReplace);
@@ -98,6 +98,7 @@ class BingLib {
 	//void updateBannerHasRemote(quint64 banner_id, quint64 keyword_id);
 
 	bool errorCheck(const QString& response);
+	bool errorCheck(const QByteArray& response);
 
 	//QString XMLtoJSON(QDomNode root, std::string parent_tag, Json::Value &json_output);
 	//Json::Value responseToJSON(std::string resp);
