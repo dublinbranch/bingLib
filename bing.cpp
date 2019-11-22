@@ -69,7 +69,7 @@ bool BingLib::insertAds(const QByteArray& payload) {
 	auto marx = curlpp->getMarx();
 	curl_easy_setopt(marx, CURLOPT_POST, 1);
 	curl_easy_setopt(marx, CURLOPT_POSTFIELDS, payload.constData());
-	curl_easy_setopt(marx, CURLOPT_VERBOSE, 1);
+	curl_easy_setopt(marx, CURLOPT_VERBOSE, 0);
 
 	curlpp->resetHeader();
 	curlpp->setUrl(url);
