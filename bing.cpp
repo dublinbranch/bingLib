@@ -1,6 +1,6 @@
 #include "bing.h"
 #include "QStacker/qstacker.h"
-#include "define/define.h"
+#include "define.h"
 #include "fileFunction/filefunction.h"
 #include "minMysql/min_mysql.h"
 #include "rapidjson/includeMe.h"

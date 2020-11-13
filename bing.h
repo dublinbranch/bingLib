@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include "minMysql/min_mysql.h"
 
 class QDateTime;
 
@@ -23,12 +24,8 @@ struct BingSpecialization {
 	bool       sandBox = false;
 };
 
-using sqlRow    = QMap<QByteArray, QByteArray>;
-using sqlResult = QList<sqlRow>;
-
 class QDomNode;
 class CURLpp;
-class DB;
 class BingLib {
       public:
 	bool    insertCampaign(const sqlRow& data);
