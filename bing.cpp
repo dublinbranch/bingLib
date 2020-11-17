@@ -673,7 +673,7 @@ QString BingLib::getGroupInfo(const QByteArray& remote_campaign_id) {
 	return response;
 }
 
-QByteArray BingLib::getDestinationUrlPerformance(const QDateTime& day) {
+QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13" xmlns:ns2="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
   <SOAP-ENV:Header>

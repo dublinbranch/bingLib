@@ -49,7 +49,7 @@ class BingLib {
 	QByteArray                            getHeader(int type = 0);
 	QString                               getGroupInfo(const QByteArray& remote_campaign_id);
 
-	QByteArray getDestinationUrlPerformance(const QDateTime& day);
+	QByteArray getAdGroupExpenditure(const QDateTime& day);
 	QByteArray bulkDownloader(const QByteArray& remoteId);
 
 	DB* db = nullptr;
