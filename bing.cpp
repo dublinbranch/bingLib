@@ -135,8 +135,8 @@ QByteArray BingLib::getCampaignsInfo() {
 	                         .set_verbose(0)
 	                         .build();
 
-	QByteArray response = curlHandler.perform().c_str();
-	QString lastError = QString::fromStdString(curlHandler.getLastError());
+	QByteArray response  = curlHandler.perform().c_str();
+	QString    lastError = QString::fromStdString(curlHandler.getLastError());
 
 	if (!errorCheck(response)) {
 		qCritical() << lastError;
@@ -556,7 +556,7 @@ bool BingLib::errorCheck(const QString& response) {
 	return errorCheck(response.toUtf8());
 }
 
-bool BingLib::errorCheck(const QByteArray &response) {
+bool BingLib::errorCheck(const QByteArray& response) {
 	bool a = response.contains("Authentication failed");
 	bool b = response.contains("PartialErrors");
 	bool c = response.contains("s:Fault");
@@ -673,7 +673,7 @@ QString BingLib::getGroupInfo(const QByteArray& remote_campaign_id) {
 	return response;
 }
 
-QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
+QByteArray BingLib::getDestinationUrlPerformance(const QDateTime& day) {
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13" xmlns:ns2="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
   <SOAP-ENV:Header>
@@ -818,7 +818,7 @@ QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
 	filePutContents(content, "bingReport/downloadedFile.zip");
 
 	auto files = unzippaFile("bingReport");
-	if(files.isEmpty()){
+	if (files.isEmpty()) {
 		throw QSL("bing report is empty!");
 	}
 	return fileGetContents(files.at(0));

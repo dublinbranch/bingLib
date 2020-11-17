@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QHash>
 #include "minMysql/min_mysql.h"
+#include <QHash>
 
 class QDateTime;
 
@@ -35,7 +35,7 @@ class BingLib {
 	void    insertMultipleKeyword(const sqlResult& data);
 
 	QByteArray getCampaignsInfo();
-	QString getLocations();
+	QString    getLocations();
 
 	QString createParamFile(QString skeletonUrl, QMap<QString, QByteArray> toReplace);
 	QString createParamFile(QString skeletonUrl, QMap<QString, QString> toReplace);
@@ -49,7 +49,7 @@ class BingLib {
 	QByteArray                            getHeader(int type = 0);
 	QString                               getGroupInfo(const QByteArray& remote_campaign_id);
 
-	QByteArray getAdGroupExpenditure(const QDateTime& day);
+	QByteArray getDestinationUrlPerformance(const QDateTime& day);
 	QByteArray bulkDownloader(const QByteArray& remoteId);
 
 	DB* db = nullptr;
