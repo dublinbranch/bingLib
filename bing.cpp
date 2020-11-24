@@ -179,13 +179,15 @@ QByteArray BingLib::getAccessToken() {
 	try {
 		rapidjson::Document json;
 		json.Parse(response.c_str(), response.size());
+		if (json.IsObject() && json.HasMember("access_token")) {
+			token         = json["access_token"].GetString();
+			token_expires = QDateTime::currentSecsSinceEpoch() + 3540; // I'll leave a minute of margin
+			return token;
+		}
 
-		token         = json["access_token"].GetString();
-		token_expires = QDateTime::currentSecsSinceEpoch() + 3540; // I'll leave a minute of margin
 	} catch (...) {
-		qCritical() << "error decoding token json" << response.c_str();
 	}
-
+	qWarning() << "error decoding token json, response was" << response.c_str() << "\n\n***************\nrequest was" << params;
 	return token;
 }
 
@@ -676,7 +678,25 @@ QString BingLib::getGroupInfo(const QByteArray& remote_campaign_id) {
 	return response;
 }
 
-QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
+BingLib::Response BingLib::getAdGroupExpenditure(const QDateTime& day) {
+	/* 
+	 * DISABLED as not used ATM
+	 
+<ns1:KeywordPerformanceReportColumn>KeywordId</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>DeviceType</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>BidMatchType</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>Ctr</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>QualityScore</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>KeywordStatus</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>AdRelevance</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>AdDistribution</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>AllConversions</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>AveragePosition</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>LandingPageExperience</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>Network</ns1:KeywordPerformanceReportColumn>
+<ns1:KeywordPerformanceReportColumn>AdGroupStatus</ns1:KeywordPerformanceReportColumn>
+	 */
+
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13" xmlns:ns2="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
   <SOAP-ENV:Header>
@@ -693,29 +713,14 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 			  <ns1:ReturnOnlyCompleteData>false</ns1:ReturnOnlyCompleteData>
 			  <ns1:Aggregation>Daily</ns1:Aggregation>
 			  <ns1:Columns>
-				  <ns1:KeywordPerformanceReportColumn>TimePeriod</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AccountId</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>CampaignId</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Keyword</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>KeywordId</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>DeviceType</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>BidMatchType</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Clicks</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Impressions</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>FinalUrl</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>Ctr</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Spend</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>QualityScore</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>AdGroupId</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AdGroupStatus</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>KeywordStatus</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AdRelevance</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AdDistribution</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AllConversions</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>AveragePosition</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Conversions</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>LandingPageExperience</ns1:KeywordPerformanceReportColumn>
-				  <ns1:KeywordPerformanceReportColumn>Network</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>AdGroupName</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>CurrentMaxCpc</ns1:KeywordPerformanceReportColumn>
 			  </ns1:Columns>
@@ -768,13 +773,13 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	XPath xml(response);
 	auto  res = xml.getLeaf("//*[name()='ReportRequestId']");
 	if (res.isEmpty()) {
-		qCritical().noquote() << "errore nel richiedere report" << QStacker();
-		return QByteArray();
+		qCritical().noquote() << "errore nel richiedere report, response is" << response << QStacker();
+		return Response();
 	}
 	return bulkDownloader(res);
 }
 
-QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
+BingLib::Response BingLib::bulkDownloader(const QByteArray& remoteId) {
 	QByteArray skel = R"EOD(
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://bingads.microsoft.com/Reporting/v13">
   <SOAP-ENV:Header>
@@ -815,7 +820,7 @@ QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
 		}
 		auto isNull = reportDownloadUrl[0].getProp("nil");
 		if (isNull == "true") {
-			return QByteArray();
+			return Response();
 		}
 		downloadUrl = reportDownloadUrl[0].getContent();
 		if (!downloadUrl.isEmpty()) {
@@ -829,13 +834,15 @@ QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
 
 	cleanFolder("bingReport");
 
+	static std::mutex            lock;
+	std::scoped_lock<std::mutex> scoped(lock);
 	filePutContents(content, "bingReport/downloadedFile.zip");
 
 	auto files = unzippaFile("bingReport");
 	if (files.isEmpty()) {
 		throw QSL("bing report is empty!");
 	}
-	return fileGetContents(files.at(0));
+	return Response{fileGetContents(files.at(0)), true};
 }
 
 /*

@@ -28,6 +28,10 @@ class QDomNode;
 class CURLpp;
 class BingLib {
       public:
+	struct Response {
+		QByteArray xml;
+		bool       ok = false;
+	};
 	bool    insertCampaign(const sqlRow& data);
 	bool    insertAds(const QByteArray& payload);
 	QString insertGroup(const sqlRow& data);
@@ -49,8 +53,8 @@ class BingLib {
 	QByteArray                            getHeader(int type = 0);
 	QString                               getGroupInfo(const QByteArray& remote_campaign_id);
 
-	QByteArray getAdGroupExpenditure(const QDateTime& day);
-	QByteArray bulkDownloader(const QByteArray& remoteId);
+	BingLib::Response getAdGroupExpenditure(const QDateTime& day);
+	Response        bulkDownloader(const QByteArray& remoteId);
 
 	DB* db = nullptr;
 
