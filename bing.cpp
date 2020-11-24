@@ -147,7 +147,10 @@ QByteArray BingLib::getCampaignsInfo() {
 }
 
 QByteArray BingLib::getAccessToken() {
-	std::string url;
+	//This mutex is probably useless
+	static std::mutex            lock;
+	std::scoped_lock<std::mutex> scoped(lock);
+	std::string                  url;
 	if (spec->sandBox) {
 		url = "https://login.live-int.com/oauth20_token.srf";
 	} else {
@@ -699,6 +702,7 @@ QByteArray BingLib::getAdGroupExpenditure(const QDateTime& day) {
 				  <ns1:KeywordPerformanceReportColumn>BidMatchType</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Clicks</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Impressions</ns1:KeywordPerformanceReportColumn>
+				  <ns1:KeywordPerformanceReportColumn>FinalUrl</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Ctr</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>Spend</ns1:KeywordPerformanceReportColumn>
 				  <ns1:KeywordPerformanceReportColumn>QualityScore</ns1:KeywordPerformanceReportColumn>
@@ -802,11 +806,21 @@ QByteArray BingLib::bulkDownloader(const QByteArray& remoteId) {
 		//TODO loop until you can find the ReportDownloadUrl
 
 		XPath xml(response);
-		downloadUrl = xml.getLeaf("//*[name()='ReportDownloadUrl']");
+		//IF the ReportDownloadUrl is set to nil, it means is either empty or there is an error
+		auto reportDownloadUrl = xml.getNodes("//*[name()='ReportDownloadUrl']");
+		if (reportDownloadUrl.empty()) {
+			//still nothing
+			usleep(1000000); //1 second
+			continue;
+		}
+		auto isNull = reportDownloadUrl[0].getProp("nil");
+		if (isNull == "true") {
+			return QByteArray();
+		}
+		downloadUrl = reportDownloadUrl[0].getContent();
 		if (!downloadUrl.isEmpty()) {
 			break;
 		}
-		usleep(1000000); //1 second
 	}
 
 	downloadUrl.replace("&amp;", "&");
