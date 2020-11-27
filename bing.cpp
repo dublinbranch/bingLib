@@ -139,7 +139,7 @@ QByteArray BingLib::getCampaignsInfo() {
 	QString    lastError = QString::fromStdString(curlHandler.getLastError());
 
 	if (!errorCheck(response)) {
-		qCritical() << lastError;
+		qWarning() << lastError;
 		return QByteArray();
 	}
 
@@ -288,12 +288,12 @@ QString BingLib::insertGroup(const sqlRow& data) {
 	auto response = QString::fromStdString(curlpp->perform());
 
 	if (!errorCheck(response)) {
-		qCritical() << " \n\n\n\n Processing" << data.value("name") << "\n---------------------------------------------------------\n---------------------------------------------------------\n---------------------------------------------------------";
+		qWarning() << " \n\n\n\n Processing" << data.value("name") << "\n---------------------------------------------------------\n---------------------------------------------------------\n---------------------------------------------------------";
 		return response;
 	}
 
 	//TODO
-	//qCritical() << "extract the adGroupId";
+	//qWarning() << "extract the adGroupId";
 	//remote_group_id = stoull(json["s:Body"]["AddAdGroupsResponse"]["AdGroupIds"]["a:long"].asString());
 	//return_value.group_id = remote_group_id;
 
@@ -301,7 +301,7 @@ QString BingLib::insertGroup(const sqlRow& data) {
 	/*
 	quint64 keyword_id = insertKeyword(remote_group_id, data);
 	if (keyword_id == 0) {
-		qCritical() << "error in creating the keyword for the banner" << banner_id;
+		qWarning() << "error in creating the keyword for the banner" << banner_id;
 		return_value.error = 1;
 		return return_value;
 	}
@@ -572,7 +572,7 @@ bool BingLib::errorCheck(const QByteArray& response) {
 	}
 
 	if (c) {
-		qCritical().noquote() << "last error " << response;
+		qWarning().noquote() << "last error " << response;
 		return false;
 	}
 
@@ -582,7 +582,7 @@ bool BingLib::errorCheck(const QByteArray& response) {
 		XPath xml(response);
 		auto  res = xml.getLeafs("//*[name()='PartialErrors']");
 		if (!res.isEmpty() && res.at(0).length() > 2) {
-			qCritical().noquote() << res.at(0);
+			qWarning().noquote() << res.at(0);
 			return false;
 		}
 		return true;
@@ -773,7 +773,7 @@ BingLib::Response BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	XPath xml(response);
 	auto  res = xml.getLeaf("//*[name()='ReportRequestId']");
 	if (res.isEmpty()) {
-		qCritical().noquote() << "errore nel richiedere report, response is" << response << QStacker();
+		qWarning().noquote() << "errore nel richiedere report, response is" << response << QStacker();
 		return Response();
 	}
 	return bulkDownloader(res);
