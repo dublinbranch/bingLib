@@ -773,7 +773,12 @@ BingLib::Response BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	XPath xml(response);
 	auto  res = xml.getLeaf("//*[name()='ReportRequestId']");
 	if (res.isEmpty()) {
-		qWarning().noquote() << "errore nel richiedere report, response is" << response << QStacker();
+		if (response.isEmpty()) {
+			qWarning().noquote() << "errore nel richiedere report, response is empty" << QStacker();
+		} else {
+			qWarning().noquote() << "errore nel richiedere report, response is" << response << QStacker();
+		}
+
 		return Response();
 	}
 	return bulkDownloader(res);
