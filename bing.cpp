@@ -774,9 +774,9 @@ BingLib::Response BingLib::getAdGroupExpenditure(const QDateTime& day) {
 	auto  res = xml.getLeaf("//*[name()='ReportRequestId']");
 	if (res.isEmpty()) {
 		if (response.isEmpty()) {
-			qWarning().noquote() << "errore nel richiedere report, response is empty" << QStacker();
+			qDebug().noquote() << "errore nel richiedere report, response is empty" << QStacker();
 		} else {
-			qWarning().noquote() << "errore nel richiedere report, response is" << response << QStacker();
+			qDebug().noquote() << "errore nel richiedere report, response is" << response << QStacker();
 		}
 
 		return Response();
