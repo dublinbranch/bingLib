@@ -54,10 +54,17 @@ class BingLib {
 	QString                               getGroupInfo(const QByteArray& remote_campaign_id);
 
 	BingLib::Response getAdGroupExpenditure(const QDateTime& day);
-	Response        bulkDownloader(const QByteArray& remoteId);
+	Response          bulkDownloader(const QByteArray& remoteId);
 
 	DB* db = nullptr;
 
+	struct Token {
+		bool       valid = false;
+		QByteArray token;
+		qint64     expires = 0;
+	};
+	Token getAccessToken();
+	
       protected:
 	CURLpp* curlpp = nullptr;
 
@@ -66,8 +73,7 @@ class BingLib {
 	bool updateBanner(quint64 banner_id, const QMap<QByteArray, QByteArray>& data);
 	*/
       private:
-	QString    getAdInfo(quint64 remote_campaign_id, quint64 remote_group_id);
-	QByteArray getAccessToken();
+	QString getAdInfo(quint64 remote_campaign_id, quint64 remote_group_id);
 
 	std::string postFieldsForInsertCampaign(const QMap<QByteArray, QByteArray>& data);
 	std::string postFieldsForInsertGroup(const sqlRow& data);
@@ -111,8 +117,7 @@ class BingLib {
 	static QMap<QString, QString> nationCodes;
 	static QMap<QString, QString> languageCodes;
 
-	QByteArray token;
-	qint64     token_expires = 0;
+	Token token;
 
 	//I need to access and modify the internal stuff -.-
 	QHash<quint64, QByteArrayList*> groupToUpdate;

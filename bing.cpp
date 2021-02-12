@@ -146,7 +146,7 @@ QByteArray BingLib::getCampaignsInfo() {
 	return response;
 }
 
-QByteArray BingLib::getAccessToken() {
+BingLib::Token BingLib::getAccessToken() {
 	//This mutex is probably useless
 	static std::mutex            lock;
 	std::scoped_lock<std::mutex> scoped(lock);
@@ -157,7 +157,7 @@ QByteArray BingLib::getAccessToken() {
 		url = "https://login.live.com/oauth20_token.srf";
 	}
 
-	if (token_expires > QDateTime::currentSecsSinceEpoch()) {
+	if (token.expires > QDateTime::currentSecsSinceEpoch()) {
 		return token;
 	}
 
@@ -180,14 +180,16 @@ QByteArray BingLib::getAccessToken() {
 		rapidjson::Document json;
 		json.Parse(response.c_str(), response.size());
 		if (json.IsObject() && json.HasMember("access_token")) {
-			token         = json["access_token"].GetString();
-			token_expires = QDateTime::currentSecsSinceEpoch() + 3540; // I'll leave a minute of margin
+			token.token   = json["access_token"].GetString();
+			token.expires = QDateTime::currentSecsSinceEpoch() + 3540; // I'll leave a minute of margin
+			token.valid   = true;
 			return token;
 		}
 
 	} catch (...) {
 	}
-	qWarning() << "error decoding token json, response was" << response.c_str() << "\n\n***************\nrequest was" << params;
+	qDebug() << "error decoding token json, response was" << response.c_str() << "\n\n***************\nrequest was" << params;
+	token.valid = false;
 	return token;
 }
 
@@ -219,7 +221,7 @@ QByteArray BingLib::getHeader(int type) {
 	header.replace("{{CustomerId}}", spec->customerId);
 	header.replace("{{DeveloperToken}}", spec->developerToken);
 	header.replace("{{ApplicationToken}}", spec->applicationToken);
-	header.replace("{{AuthenticationToken}}", getAccessToken());
+	header.replace("{{AuthenticationToken}}", getAccessToken().token);
 
 	return header;
 }
@@ -568,7 +570,7 @@ bool BingLib::errorCheck(const QByteArray& response) {
 
 	if (a) {
 		// will reset the token with the next call
-		token_expires = 0;
+		token.expires = 0;
 	}
 
 	if (c) {
