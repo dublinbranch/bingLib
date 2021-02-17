@@ -574,7 +574,7 @@ bool BingLib::errorCheck(const QByteArray& response) {
 	}
 
 	if (c) {
-		qWarning().noquote() << "last error " << response;
+		qDebug().noquote() << "last error " << response;
 		return false;
 	}
 
@@ -584,7 +584,7 @@ bool BingLib::errorCheck(const QByteArray& response) {
 		XPath xml(response);
 		auto  res = xml.getLeafs("//*[name()='PartialErrors']");
 		if (!res.isEmpty() && res.at(0).length() > 2) {
-			qWarning().noquote() << res.at(0);
+			qDebug().noquote() << res.at(0);
 			return false;
 		}
 		return true;
