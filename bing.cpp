@@ -113,6 +113,9 @@ QString BingLib::createParamFile(QString skeletonUrl, QMap<QString, QString> toR
 }
 
 QByteArray BingLib::getCampaignsInfo() {
+	if (!getAccessToken().valid) {
+		return QByteArray();
+	}
 	std::string url;
 	if (spec->sandBox) {
 		url = "https://campaign.api.sandbox.bingads.microsoft.com/Api/Advertiser/CampaignManagement/V13/CampaignManagementService.svc?wsdl";
@@ -139,7 +142,7 @@ QByteArray BingLib::getCampaignsInfo() {
 	QString    lastError = QString::fromStdString(curlHandler.getLastError());
 
 	if (!errorCheck(response)) {
-		qWarning() << lastError;
+		qDebug().noquote() << lastError;
 		return QByteArray();
 	}
 
@@ -290,12 +293,12 @@ QString BingLib::insertGroup(const sqlRow& data) {
 	auto response = QString::fromStdString(curlpp->perform());
 
 	if (!errorCheck(response)) {
-		qWarning() << " \n\n\n\n Processing" << data.value("name") << "\n---------------------------------------------------------\n---------------------------------------------------------\n---------------------------------------------------------";
+		qDebug().noquote() << " \n\n\n\n Processing" << data.value("name") << "\n---------------------------------------------------------\n---------------------------------------------------------\n---------------------------------------------------------";
 		return response;
 	}
 
 	//TODO
-	//qWarning() << "extract the adGroupId";
+	//qDebug().noquote() << "extract the adGroupId";
 	//remote_group_id = stoull(json["s:Body"]["AddAdGroupsResponse"]["AdGroupIds"]["a:long"].asString());
 	//return_value.group_id = remote_group_id;
 
@@ -303,7 +306,7 @@ QString BingLib::insertGroup(const sqlRow& data) {
 	/*
 	quint64 keyword_id = insertKeyword(remote_group_id, data);
 	if (keyword_id == 0) {
-		qWarning() << "error in creating the keyword for the banner" << banner_id;
+		qDebug().noquote() << "error in creating the keyword for the banner" << banner_id;
 		return_value.error = 1;
 		return return_value;
 	}
