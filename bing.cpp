@@ -44,12 +44,12 @@
 QMap<QString, QString> BingLib::nationCodes   = BingLib::initNationCodes();
 QMap<QString, QString> BingLib::languageCodes = BingLib::initLanguageCodes();
 
-BingLib::BingLib(BingSpecialization* spec) {
+BingLib::BingLib(BingSpecialization* _spec) {
 	auto builder = CURLpp::Builder()
 	                   .set_timeout(10000)
 	                   .set_connect_timeout(2000);
 	curlpp     = new CURLpp(builder);
-	this->spec = spec;
+	this->spec = _spec;
 }
 
 /**

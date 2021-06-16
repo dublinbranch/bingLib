@@ -45,7 +45,7 @@ class BingLib {
 	QString createParamFile(QString skeletonUrl, QMap<QString, QString> toReplace);
 	bool    flushUpdateGroup();
 	BingLib() = default;
-	BingLib(BingSpecialization* spec);
+	BingLib(BingSpecialization* _spec);
 	~BingLib() = default;
 	//static std::shared_ptr<Bing>          getInstance(int id);
 	static QHash<int, BingSpecialization> configMap;
@@ -64,7 +64,7 @@ class BingLib {
 		qint64     expires = 0;
 	};
 	Token getAccessToken();
-	
+
       protected:
 	CURLpp* curlpp = nullptr;
 
